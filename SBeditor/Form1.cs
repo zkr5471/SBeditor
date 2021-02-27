@@ -17,6 +17,7 @@ namespace SBeditor
 		Bitmap _bitmap;
 
 		readonly Size MaxBitmapSize = new Size(1000, 600);
+		readonly Size CharSize = new Size(10, 12);
 
 		public Form1()
 		{
@@ -51,7 +52,14 @@ namespace SBeditor
 			Graphics gra = Graphics.FromImage(_bitmap);
 			Font font = new Font("MeiryoKe_Console", 10);
 
+			int draw_Y = 0;
 
+			foreach (var line in _data)
+			{
+				gra.DrawString(line.ToString(), font, Brushes.White, 0, draw_Y);
+
+				draw_Y += CharSize.Height;
+			}
 
 			pictureBox1.Image = _bitmap;
 
