@@ -13,23 +13,69 @@ namespace SBeditor
 {
 	public partial class Form1 : Form
 	{
-		List<StringBuilder> _data;
-		Bitmap _bitmap;
+		public static Form1 Instance
+		{
+			get;
+			private set;
+		}
+
+		struct CursorPoint
+		{
+			public int X, Y;
+
+			public CursorPoint(int x, int y)
+			{
+				X = x;
+				Y = y;
+			}
+
+			public void Next()
+			{
+				X++;
+				if (X > Form1.Instance.SourceData[Y].Length)
+				{
+					X = 0;
+					Y++;
+				}
+			}
+
+			public void Back()
+			{
+				X--;
+				if (X < 0)
+				{
+					if (Y > 0)
+					{
+						Y--;
+						X = Form1.Instance.SourceData[Y].Length;
+					}
+					else
+					{
+						X = Y = 0;
+					}
+				}
+			}
+		}
+
+		public List<StringBuilder> SourceData;
+		public Bitmap EditorBitmap;
 
 		readonly Size MaxBitmapSize = new Size(1000, 600);
 		readonly Size CharSize = new Size(10, 12);
 
 		bool IsMouseDown = false;
-		Point CursorPos = new Point();
+		CursorPoint CursorPos;
 
 		public Form1()
 		{
 			InitializeComponent();
 
-			_data = new List<StringBuilder>();
-			_bitmap = new Bitmap(MaxBitmapSize.Width, MaxBitmapSize.Height);
+			SourceData = new List<StringBuilder>();
+			EditorBitmap = new Bitmap(MaxBitmapSize.Width, MaxBitmapSize.Height);
 
-			_data.Add(new StringBuilder());
+			SourceData.Add(new StringBuilder());
+
+			Instance = this;
 		}
 
 		private void Form1_Shown(object sender, EventArgs e)
@@ -53,21 +99,21 @@ namespace SBeditor
 
 		private void Render()
 		{
-			Graphics gra = Graphics.FromImage(_bitmap);
+			Graphics gra = Graphics.FromImage(EditorBitmap);
 			Font font = new Font("MeiryoKe_Console", 10);
 
 			int draw_Y = 0;
 
 			gra.Clear(Color.FromArgb(30, 30, 30));
 
-			foreach (var line in _data)
+			foreach (var line in SourceData)
 			{
 				gra.DrawString(line.ToString(), font, Brushes.White, 0, draw_Y);
 
 				draw_Y += CharSize.Height;
 			}
 
-			pictureBox1.Image = _bitmap;
+			pictureBox1.Image = EditorBitmap;
 
 			font.Dispose();
 			gra.Dispose();
@@ -75,44 +121,62 @@ namespace SBeditor
 
 		private void Openfile(string path)
 		{
-			_data.Clear();
+			SourceData.Clear();
 
 			using (var file = new StreamReader(path))
 			{
 				string line;
 				while ((line = file.ReadLine()) != null)
 				{
-					_data.Add(new StringBuilder(line));
+					SourceData.Add(new StringBuilder(line));
 				}
 			}
 		}
 
-		private void InsertString(Point pos, string str)
+		private void InsertString(CursorPoint pos, string str)
 		{
 			if (str == string.Empty)
 				return;
 
-			if (pos.Y < 0 || pos.Y >= _data.Count())
+			if (pos.Y < 0 || pos.Y >= SourceData.Count())
 			{
 				return;
 			}
 
-			if (pos.X < 0 || pos.X > _data[pos.Y].Length)
+			if (pos.X < 0 || pos.X > SourceData[pos.Y].Length)
 			{
 				return;
 			}
 
 			var list = new List<string>(str.Split('\n'));
-			list[0] = _data[pos.Y].ToString().Substring(0, pos.X) + list[0];
-			list[list.Count() - 1] += _data[pos.Y].ToString().Substring(pos.X);
+			list[0] = SourceData[pos.Y].ToString().Substring(0, pos.X) + list[0];
+			list[list.Count() - 1] += SourceData[pos.Y].ToString().Substring(pos.X);
 
 			var listSB = new List<StringBuilder>();
 			foreach (var i in list)
 				listSB.Add(new StringBuilder(i));
 
-			_data.RemoveAt(pos.Y);
-			_data.InsertRange(pos.Y, listSB);
+			SourceData.RemoveAt(pos.Y);
+			SourceData.InsertRange(pos.Y, listSB);
 		}
+
+		bool CheckKeyChar(char c)
+		{
+			string str = "!@#$%^&*()_+~`-={}[]\\|;':\"<>,./? ";
+
+			if (Char.IsDigit(c))
+				return true;
+
+			if (Char.IsLetter(c))
+				return true;
+
+			if (str.IndexOf(c) >= 0)
+				return true;
+
+			return false;
+		}
+
+
 
 		private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
 		{
@@ -135,8 +199,19 @@ namespace SBeditor
 
 		private void Form1_KeyDown(object sender, KeyEventArgs e)
 		{
+			
+		}
 
-			Render();
+		private void Form1_KeyPress(object sender, KeyPressEventArgs e)
+		{
+			if( CheckKeyChar(e.KeyChar))
+			{
+				InsertString(CursorPos, e.KeyChar.ToString());
+
+				CursorPos.Next();
+
+				Render();
+			}
 		}
 	}
 }
