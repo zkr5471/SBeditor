@@ -112,9 +112,6 @@ namespace SBeditor
 
 			_data.RemoveAt(pos.Y);
 			_data.InsertRange(pos.Y, listSB);
-
-			list = null;
-			listSB = null;
 		}
 
 		private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
